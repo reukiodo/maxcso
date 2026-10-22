@@ -100,7 +100,7 @@ jobs:
           ${{ matrix.flags }}
           
           # Resolve build-dependencies safely across cross-compilation layers
-          mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+          mk-build-deps -ir -B -P cross -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
           dpkg-buildpackage -a ${{ matrix.arch }} -us -uc -b
 
       - name: Run Downstream Lintian & Installation Sanity Pass
