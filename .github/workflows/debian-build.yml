@@ -31,7 +31,7 @@ jobs:
           - arch: mips
             toolchain: "gcc-mips-linux-gnu"
             flags: ""
-            image: "debian:bookworm-slim"
+            image: "debian:sid-slim"
           - arch: mipsel
             toolchain: "gcc-mipsel-linux-gnu"
             flags: ""
@@ -43,7 +43,7 @@ jobs:
           - arch: powerpc
             toolchain: "gcc-powerpc-linux-gnu"
             flags: ""
-            image: "debian:bookworm-slim"
+            image: "debian:sid-slim"
           - arch: ppc64el
             toolchain: "gcc-powerpc64le-linux-gnu"
             flags: ""
