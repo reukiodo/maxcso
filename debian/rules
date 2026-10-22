@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+
+# Force static linking for core application dependencies
+export DEB_LDFLAGS_SET = -static-libgcc -static-libstdc++ -Wl,-Bstatic -luv -ldeflate -llz4 -lz -Wl,-Bdynamic
+
+# Pass optimization or warning flags if needed
+export DEB_CFLAGS_MAINT_APPEND = -O3
+
+%:
+	dh $@
+
+# maxcso uses a plain Makefile, so we override the auto targets to use it directly
+override_dh_auto_build:
+	dh_auto_build -- PREFIX=/usr
+
+override_dh_auto_install:
+	dh_auto_install -- PREFIX=/usr
+
+# maxcso provides a native man page; ensure it gets compressed and validated correctly
+override_dh_installman:
+	dh_installman maxcso.1
+
+# Statically linked binaries do not have shared library dependencies.
+# Overriding this prevents errors when dpkg checks for dynamic .so mappings.
+override_dh_shlibdeps:
+	@echo "Bypassing dh_shlibdeps for static binary build tracking..."

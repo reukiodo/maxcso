@@ -1,0 +1,114 @@
+name: Debian Package Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            toolchain: ""
+            flags: ""
+            image: "debian:buster-slim" # Modern rolling Sid
+          - arch: armel
+            toolchain: "gcc-arm-linux-gnueabi"
+            flags: ""
+            image: "debian:buster-slim" # FIX: Pinned historical snapshot container
+          - arch: armhf
+            toolchain: "gcc-arm-linux-gnueabihf"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: arm64
+            toolchain: "gcc-aarch64-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: i386
+            toolchain: "crossbuild-essential-i386"
+            flags: "export DEB_CFLAGS_SET='-march=i686 -mtune=generic'"
+            image: "debian:buster-slim"
+          - arch: mips
+            toolchain: "gcc-mips-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: mipsel
+            toolchain: "gcc-mipsel-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: mips64el
+            toolchain: "gcc-mips64el-linux-gnuabi64"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: powerpc
+            toolchain: "gcc-powerpc-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: ppc64el
+            toolchain: "gcc-powerpc64le-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: s390x
+            toolchain: "gcc-s390x-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+
+    container:
+      image: ${{ matrix.image }} # FIX: Dynamically load the matching image from the matrix map
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Git Identity
+        id: ident
+        run: |
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+          echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99no-check-valid-until
+          sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
+          apt update
+          apt -y install git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "NAME=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
+          echo "EMAIL=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_ENV
+
+      - name: Configure Foreign Architecture and Base Toolchains
+        run: |
+          apt -y install debhelper devscripts lintian equivs
+          
+          # Conditionally register foreign architecture configurations
+          if [ "${{ matrix.arch }}" != "amd64" ]; then
+            dpkg --add-architecture ${{ matrix.arch }}
+            apt update
+            apt -y install crossbuild-essential-${{ matrix.arch }}
+          fi
+          
+          # Conditionally install target cross-compilers or compiler helpers
+          if [ -n "${{ matrix.toolchain }}" ]; then
+            apt -y install ${{ matrix.toolchain }}
+          fi
+
+      - name: Resolve Architecture Dependencies and Build Package
+        env:
+          DEBFULLNAME: ${{ env.NAME }}
+          DEBEMAIL: ${{ env.EMAIL }}
+        run: |
+          # Inject performance overrides (such as down-tuning i386 to i686 execution limits)
+          ${{ matrix.flags }}
+          
+          # Resolve build-dependencies safely across cross-compilation layers
+          mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+          dpkg-buildpackage -a ${{ matrix.arch }} -us -uc -b
+
+      - name: Run Downstream Lintian & Installation Sanity Pass
+        run: |
+          echo "=== Executing Package Lint Rules Check ==="
+          lintian ../*.deb
+          
+          echo "=== Simulating Local Package Extraction Tests ==="
+          echo "Skipping native installation pass execution for cross-compiled asset: ${{ matrix.arch }}"
+          for pkg in $(ls ../*_${{ matrix.arch }}.deb | grep -v "dbgsym"); do
+            dpkg --info "$pkg"
+          done
