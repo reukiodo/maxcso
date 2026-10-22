@@ -9,6 +9,14 @@ export DEB_CFLAGS_MAINT_APPEND = -O3
 %:
 	dh $@
 
+# Build libuv natively as a static archive before maxcso compiles
+override_dh_auto_configure:
+	dh_auto_configure
+	@echo "=== Compiling Static libuv.a Archive ==="
+	cd libuv && ./autogen.sh && ./configure --enable-static --disable-shared && make -j$(shell nproc)
+	# Copy the newly built library into a path maxcso's linker can see
+	cp libuv/.libs/libuv.a .
+
 # maxcso uses a plain Makefile, so we override the auto targets to use it directly
 override_dh_auto_build:
 	dh_auto_build -- PREFIX=/usr
