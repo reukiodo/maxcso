@@ -24,7 +24,7 @@ override_dh_auto_configure:
 
 # maxcso uses a plain Makefile, so we override the auto targets to use it directly
 override_dh_auto_build:
-	dh_auto_build -- PREFIX=/usr LIBS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -L. -luv -ldeflate -llz4 -lz -Wl,-Bdynamic -lpthread -latomic"
+	dh_auto_build -- PREFIX=/usr LIBS="-static-libgcc -static-libstdc++ -Wl,-Bstatic -L. -luv -ldeflate -llz4 -lz -Wl,-Bdynamic -lpthread -latomic -lrt -ldl"
 
 override_dh_auto_install:
 	dh_auto_install -- PREFIX=/usr
