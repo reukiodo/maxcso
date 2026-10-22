@@ -82,12 +82,6 @@ jobs:
             dpkg --add-architecture ${{ matrix.arch }}
             apt update
             apt -y install crossbuild-essential-${{ matrix.arch }}
-            apt-get download \
-              libdeflate-dev:${{ matrix.arch }} \
-              liblz4-dev:${{ matrix.arch }} \
-              libuv1-dev:${{ matrix.arch }} \
-              zlib1g-dev:${{ matrix.arch }}
-            for deb in *.deb; do dpkg -x "$deb" / ; done
           fi
           
           # Conditionally install target cross-compilers or compiler helpers
@@ -103,8 +97,17 @@ jobs:
           # Inject performance overrides (such as down-tuning i386 to i686 execution limits)
           ${{ matrix.flags }}
           
-          # Resolve build-dependencies safely across cross-compilation layers
-          mk-build-deps -ir -B -P cross -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+          # Automatic resolve build-dependencies only works on host arch
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            mk-build-deps -ir -B -P cross -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+          else
+            apt-get download \
+              libdeflate-dev:${{ matrix.arch }} \
+              liblz4-dev:${{ matrix.arch }} \
+              libuv1-dev:${{ matrix.arch }} \
+              zlib1g-dev:${{ matrix.arch }}
+            for deb in *.deb; do dpkg -x "$deb" / ; done
+          fi
           dpkg-buildpackage -d -a ${{ matrix.arch }} -us -uc -b
 
       - name: Run Downstream Lintian & Installation Sanity Pass
