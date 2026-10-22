@@ -3,6 +3,9 @@
 # Pass optimization or warning flags if needed
 export DEB_CFLAGS_MAINT_APPEND = -O3
 
+DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
 %:
 	dh $@
 
@@ -10,7 +13,12 @@ export DEB_CFLAGS_MAINT_APPEND = -O3
 override_dh_auto_configure:
 	dh_auto_configure
 	@echo "=== Compiling Static libuv.a Archive ==="
-	cd libuv && ./autogen.sh && ./configure --enable-static --disable-shared && make -j$(shell nproc)
+	cd libuv && ./autogen.sh && ./configure \
+		--host=$(DEB_HOST_GNU_TYPE) \
+		--build=$(DEB_BUILD_GNU_TYPE) \
+		--enable-static \
+		--disable-shared
+	make -C libuv -j$(shell nproc)
 	# Copy the newly built library into a path maxcso's linker can see
 	cp libuv/.libs/libuv.a .
 
