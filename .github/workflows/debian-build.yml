@@ -67,7 +67,6 @@ jobs:
         run: |
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
           echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99no-check-valid-until
-          sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
           apt update
           apt -y install git
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
