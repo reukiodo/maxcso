@@ -11,47 +11,47 @@ jobs:
           - arch: amd64
             toolchain: ""
             flags: ""
-            image: "debian:buster-slim" # Modern rolling Sid
+            image: "debian:bookworm-slim" # Modern rolling Sid
           - arch: armel
             toolchain: "gcc-arm-linux-gnueabi"
             flags: ""
-            image: "debian:buster-slim" # FIX: Pinned historical snapshot container
+            image: "debian:bookworm-slim" # FIX: Pinned historical snapshot container
           - arch: armhf
             toolchain: "gcc-arm-linux-gnueabihf"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: arm64
             toolchain: "gcc-aarch64-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: i386
             toolchain: "crossbuild-essential-i386"
             flags: "export DEB_CFLAGS_SET='-march=i686 -mtune=generic'"
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: mips
             toolchain: "gcc-mips-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: mipsel
             toolchain: "gcc-mipsel-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: mips64el
             toolchain: "gcc-mips64el-linux-gnuabi64"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: powerpc
             toolchain: "gcc-powerpc-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: ppc64el
             toolchain: "gcc-powerpc64le-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
           - arch: s390x
             toolchain: "gcc-s390x-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:bookworm-slim"
 
     container:
       image: ${{ matrix.image }} # FIX: Dynamically load the matching image from the matrix map
