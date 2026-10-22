@@ -83,6 +83,7 @@ jobs:
             dpkg --add-architecture ${{ matrix.arch }}
             apt update
             apt -y install crossbuild-essential-${{ matrix.arch }}
+            apt -y install libc6:${{ matrix.arch }}
           fi
           
           # Conditionally install target cross-compilers or compiler helpers
