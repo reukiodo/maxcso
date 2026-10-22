@@ -43,7 +43,7 @@ jobs:
           - arch: powerpc
             toolchain: "gcc-powerpc-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:sid-slim"
           - arch: ppc64el
             toolchain: "gcc-powerpc64le-linux-gnu"
             flags: ""
@@ -68,6 +68,10 @@ jobs:
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
           echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99no-check-valid-until
           sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
+          if [ "${{ matrix.image }}" = "debian:sid-slim" ]; then
+            echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports sid main" >> /etc/apt/sources.list
+            echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports unreleased main" >> /etc/apt/sources.list
+          fi
           apt update
           apt -y install git
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -100,7 +104,7 @@ jobs:
           
           # Automatic resolve build-dependencies only works on host arch 🤷‍♂️
           if [ "${{ matrix.arch }}" = "amd64" ]; then
-            mk-build-deps -ir -B -P cross -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+            mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
           else
             apt-get download \
               libdeflate-dev:${{ matrix.arch }} \
