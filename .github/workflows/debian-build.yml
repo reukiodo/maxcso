@@ -82,15 +82,11 @@ jobs:
         run: |
           apt -y install debhelper devscripts lintian equivs
           
-          # Conditionally register foreign architecture configurations
-          if [ "${{ matrix.arch }}" != "amd64" ]; then
+          # Conditionally register foreign architecture configurations and install target cross-compilers or compiler helpers
+          if [ -n "${{ matrix.toolchain }}" ]; then
             dpkg --add-architecture ${{ matrix.arch }}
             apt update
             apt -y install crossbuild-essential-${{ matrix.arch }}
-          fi
-          
-          # Conditionally install target cross-compilers or compiler helpers
-          if [ -n "${{ matrix.toolchain }}" ]; then
             apt -y install ${{ matrix.toolchain }}
           fi
 
@@ -103,8 +99,8 @@ jobs:
           ${{ matrix.flags }}
           
           # Automatic resolve build-dependencies only works on host arch 🤷‍♂️
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes" --host-arch ${{ matrix.arch }} --build-arch amd64
+          if [ -z "${{ matrix.toolchain }}" ]; then
+            mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes"
           else
             apt-get download \
               libdeflate-dev:${{ matrix.arch }} \
