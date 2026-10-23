@@ -1,0 +1,136 @@
+name: Debian Package Build & Release
+on:
+  release:
+    types: [published] # Triggers automatically when you publish a GitHub Release
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            toolchain: ""
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: armel
+            toolchain: "gcc-arm-linux-gnueabi"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: armhf
+            toolchain: "gcc-arm-linux-gnueabihf"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: arm64
+            toolchain: "gcc-aarch64-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: i386
+            toolchain: "crossbuild-essential-i386"
+            flags: "export DEB_CFLAGS_SET='-march=i686 -mtune=generic'"
+            image: "debian:buster-slim"
+          - arch: mips
+            toolchain: "gcc-mips-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: mipsel
+            toolchain: "gcc-mipsel-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: mips64el
+            toolchain: "gcc-mips64el-linux-gnuabi64"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: powerpc
+            toolchain: "gcc-powerpc-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: ppc64el
+            toolchain: "gcc-powerpc64le-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+          - arch: s390x
+            toolchain: "gcc-s390x-linux-gnu"
+            flags: ""
+            image: "debian:buster-slim"
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Git Identity
+        id: ident
+        run: |
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+          echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99no-check-valid-until
+          [ -f /etc/apt/sources.list ] && sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
+          if [ "${{ matrix.image }}" = "debian:sid-slim" ]; then
+            echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports sid main" >> /etc/apt/sources.list
+            echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports unreleased main" >> /etc/apt/sources.list
+          fi
+          apt update
+          apt -y install git
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "NAME=$(git log -1 --pretty=format:'%an')" >> $GITHUB_ENV
+          echo "EMAIL=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_ENV
+
+      - name: Set Version from Tag
+        run: |
+          # Extract version from tag (remove 'v' prefix if present)
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Print environment variables for debugging
+        run: env | sort
+
+      - name: Configure Foreign Architecture and Base Toolchains
+        run: |
+          apt -y install debhelper devscripts lintian equivs
+          
+          # Conditionally register foreign architecture configurations and install target cross-compilers or compiler helpers
+          if [ -n "${{ matrix.toolchain }}" ]; then
+            dpkg --add-architecture ${{ matrix.arch }}
+            apt update
+            apt -y install crossbuild-essential-${{ matrix.arch }}
+            apt -y install ${{ matrix.toolchain }}
+          fi
+
+      - name: Resolve Architecture Dependencies and Build Package
+        env:
+          DEBFULLNAME: ${{ env.NAME }}
+          DEBEMAIL: ${{ env.EMAIL }}
+        run: |
+          # Inject performance overrides (such as down-tuning i386 to i686 execution limits)
+          ${{ matrix.flags }}
+          
+          # Automatic resolve build-dependencies only works on host arch 🤷‍♂️
+          if [ -z "${{ matrix.toolchain }}" ]; then
+            mk-build-deps -ir -B -t "apt -y --no-install-recommends -o Debug::pkgProblemResolver=yes"
+          else
+            apt-get download \
+              libdeflate-dev:${{ matrix.arch }} \
+              liblz4-dev:${{ matrix.arch }} \
+              libuv1-dev:${{ matrix.arch }} \
+              zlib1g-dev:${{ matrix.arch }}
+            for deb in *.deb; do dpkg -x "$deb" / ; done
+          fi
+          dpkg-buildpackage -d -a ${{ matrix.arch }} -us -uc -b
+
+      - name: Stage Release Artifacts
+        run: |
+          mkdir -p staging_dir
+          mv ../maxcso_*_${{ matrix.arch }}.deb staging_dir/ || true
+          mv ../maxcso-dbgsym_*_${{ matrix.arch }}.deb staging_dir/ || true
+
+      - name: Upload Architecture Package to Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: staging_dir/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
