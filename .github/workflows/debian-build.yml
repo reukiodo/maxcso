@@ -67,7 +67,7 @@ jobs:
         run: |
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
           echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99no-check-valid-until
-          sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
+          [ -f /etc/apt/sources.list ] && sed -i 's|/deb\.|/archive\.|g' /etc/apt/sources.list
           if [ "${{ matrix.image }}" = "debian:sid-slim" ]; then
             echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports sid main" >> /etc/apt/sources.list
             echo "deb [trusted=yes] http://ftp.ports.debian.org/debian-ports unreleased main" >> /etc/apt/sources.list
