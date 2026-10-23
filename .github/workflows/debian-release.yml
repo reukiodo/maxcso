@@ -49,7 +49,7 @@ jobs:
           - arch: powerpc
             toolchain: "gcc-powerpc-linux-gnu"
             flags: ""
-            image: "debian:buster-slim"
+            image: "debian:sid-slim"
           - arch: ppc64el
             toolchain: "gcc-powerpc64le-linux-gnu"
             flags: ""
